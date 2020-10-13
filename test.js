@@ -1,21 +1,81 @@
-class Game {
+class Start {
+    constructor() {
+      
+        
+    }
     
-    constructor(){
-        this.lvl = 5;
+    start(lvl) {
+        
+        const app = new PIXI.Application({ antialias: true });
+        document.body.appendChild(app.view);
+        
+        const btn = new PIXI.Sprite();
+        btn.interactive = true;
+        btn.buttonMode = true;
+        const startButton = new PIXI.Graphics();
+
+        // Rectangle
+
+        startButton.beginFill(0xDE3249);
+        startButton.drawRect(app.view.width/2 - 50, app.view.height/2 - 50, 100, 100);
+        startButton.endFill();
+
+        btn.addChild(startButton);
+        app.stage.addChild(btn);
+
+        btn.on("click", () => {
+            alert("Game started");
+            let game = new Game(app);
+            btn.parent.removeChild(btn);
+        
+            game.startGame(lvl,app);
+            let draw = new Draw(game);
+            draw.drawGame(app);
+            game.startBot();
+        });
+        
+    }
+}
+class Game extends Start {
+    
+    constructor(app){
+        super();
+        this.app = app;
+        this.lvl = 1;
         this.users = [];
         this.quatityUsers = this.users.length;
         this.cards = new Cards();
-        
         this.cardsOnTheTable = [];
+        this.outputCardsBot = [];
     }
 
     
+    startBot() {
+        let time = 1000;
+        this.outputCardsBot = [];
+        for (const card of  this.users[1].drawCards) {
+            setTimeout(()=>{
+                let a = card;
+                a.x = this.app.view.width/2 - 50;
+                a.y = this.app.view.height/2 - 75;
+                
+                this.app.stage.removeChild(card);
+                this.users[1].putTheCard(card.cardValue);
+                this.app.stage.addChild(a);
+                card.game.checkPutTheCard(card.cardValue,this.app);
+            }, card.cardValue*time);
+        }
 
+    }
     addUser(user) {
         this.users.push(user);
     }
     startGame(lvl) {
-        
+        this.users = [];
+        this.cards = new Cards();
+        this.cardsOnTheTable = [];
+        this.addUser(new User("David",true));
+        this.addUser(new User("Bot-_-",false));
         this.lvl = lvl;
         this.cards.shuffleDeck();
         for (const user of this.users) {
@@ -31,11 +91,16 @@ class Game {
         }
 
     }
-    gameOver() {
-        console.log("Game over");
+    gameOver(app) {
+        
         alert("Game over");
+        this.lvl = 1;
+        document.body.removeChild(app.view);;
+        
+        this.start(1);
+        
     }
-    checkPutTheCard(card) {
+    checkPutTheCard(card,app) {
         this.quatityUsers = this.users.length;
         let n = 0;
         
@@ -44,23 +109,25 @@ class Game {
                 n++;
             }
         }
+        
         if (n == 0) {
             alert("Вы переходите на следующий уровень");
             this.lvl++;
-            this.startGame(lvl);
-            return 1;
+            document.body.removeChild(app.view);
+            this.start(this.lvl);
+            //return 1;
         } else {
             for (let i = 0 ; i < this.quatityUsers; i++) {
                 this.users[i].quatityCards = this.users[i].cards.length;
                 for (let j = 0 ; j < this.users[i].quatityCards; j++) {
                 
                     if (this.users[i].cards[j] < card) {
-                        this.gameOver();
-                        return -1;
+                        this.gameOver(app);
+                        //return -1;
                     }
                 }
             }
-            return 0;
+            //return 0;
         }
     }
     show() {
@@ -113,7 +180,12 @@ class User {
         
     }
     deleteTheCard(card) {
-        this.cards.splice(card,1);
+        for (let i = 0 ; i < this.cards.length; i++) {
+            if (this.cards[i] == card) {
+                this.cards.splice(i,1);
+                
+            }
+        }
         
     }
     putTheCard(card) {
@@ -143,6 +215,30 @@ class DrawCard extends PIXI.Sprite {
         this.addChild(graphics);
 
         if (isFaceUp) {
+            const style = new PIXI.TextStyle({
+                fontFamily: 'Arial',
+                fontSize: 36,
+                fontStyle: 'italic',
+                fontWeight: 'bold',
+                fill: ['#ffffff', '#00ff99'], // gradient
+                stroke: '#4a1850',
+                strokeThickness: 5,
+                dropShadow: true,
+                dropShadowColor: '#000000',
+                dropShadowBlur: 4,
+                dropShadowAngle: Math.PI / 6,
+                dropShadowDistance: 6,
+                wordWrap: true,
+                wordWrapWidth: 440,
+                lineJoin: 'round'
+            });
+            
+            const richText = new PIXI.Text(this.cardValue, style);
+            richText.x = 25;
+            richText.y = 40;
+
+            this.addChild(richText);
+        } else {
             const style = new PIXI.TextStyle({
                 fontFamily: 'Arial',
                 fontSize: 36,
@@ -203,7 +299,7 @@ class Draw {
             if (user.iAm == true) {
                 for (const card of user.cards) {
                     //let userDraw = new DrawCard(game);
-                    user.drawCards[i] = new DrawCard(game);
+                    user.drawCards[i] = new DrawCard(this.game);
                     user.drawCards[i].draw(true,card);
                     user.drawCards[i].x = 150 + i*75;
                     user.drawCards[i].y = app.view.height - 180;
@@ -222,7 +318,7 @@ class Draw {
                                 app.stage.removeChild(event.target);
                                 userIam.putTheCard(event.target.cardValue);
                                 app.stage.addChild(a.target);
-                                event.target.game.checkPutTheCard(event.target.cardValue);
+                                event.target.game.checkPutTheCard(event.target.cardValue,app)
 
                                 
                             }
@@ -233,7 +329,7 @@ class Draw {
                 }
             } else {
                 for (const card of user.cards) {
-                    user.drawCards[i] = new DrawCard(game);
+                    user.drawCards[i] = new DrawCard(this.game);
                     user.drawCards[i].draw(false,card);
                     user.drawCards[i].x = 150 + i*75;
                     user.drawCards[i].y = 10;
@@ -248,60 +344,5 @@ class Draw {
     }
 }
 
-let game  = new Game();
-function add(name, botOrUser) {
-    game.addUser(new User(name,botOrUser));
-    
-}
-function start(app) {
-    add("David", true);
-    add("Bot-_-", false);
-    game.startGame(2);
-    let draw = new Draw(game);
-    draw.drawGame(app);
-    
-
-}
-
-const app = new PIXI.Application({ antialias: true });
-document.body.appendChild(app.view);
-
-const btn = new PIXI.Sprite();
-btn.interactive = true;
-btn.buttonMode = true;
-const startButton = new PIXI.Graphics();
-
-// Rectangle
-
-startButton.beginFill(0xDE3249);
-startButton.drawRect(app.view.width/2 - 50, app.view.height/2 - 50, 100, 100);
-startButton.endFill();
-
-btn.addChild(startButton);
-app.stage.addChild(btn);
-
-btn.on("click", () => {
-    alert("Game started");
-
-    btn.parent.removeChild(btn);
-    start(app);
-    
-    
-
-    /*card.on("click", (event) => {
-        const c = event.target;
-        console.log(card.cardValue);
-    })
-
-    const card2 = new DrawCard(58);
-    card2.draw(false);
-    card2.x = 160;
-    card2.y = 50;
-
-    card.scale.x = 0.5;
-    card.scale.y = 0.5;
-
-    app.stage.addChild(card);
-    app.stage.addChild(card2);
-    */
-});
+let go = new Start();
+go.start(2);
